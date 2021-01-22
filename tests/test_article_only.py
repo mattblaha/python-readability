@@ -58,6 +58,13 @@ class TestArticleOnly(unittest.TestCase):
         res = doc.summary(html_partial=True)
         self.assertEqual('<div><div class="content__article-body ', res[0:39])
 
+    def test_double_p(self):
+        """We should unwrap text paragraphs."""
+        sample = load_sample("div_p.html")
+        doc = Document(sample)
+        res = doc.summary(html_partial=True)
+        self.assertIn('and reunited with her family', res)
+
     def test_best_elem_is_root_and_passing(self):
         sample = (
             '<html class="article" id="body">'

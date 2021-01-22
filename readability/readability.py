@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from __future__ import print_function
+
 import logging
 import re
 import sys
@@ -10,13 +11,12 @@ from lxml.html import fragment_fromstring
 
 from .cleaners import clean_attributes
 from .cleaners import html_cleaner
+from .compat import str_, bytes_, tostring_, pattern_type
+from .debug import describe, text_content
 from .htmls import build_doc
 from .htmls import get_body
 from .htmls import get_title
 from .htmls import shorten_title
-from .compat import str_, bytes_, tostring_, pattern_type
-from .debug import describe, text_content
-
 
 log = logging.getLogger("readability.readability")
 
@@ -37,11 +37,11 @@ REGEXES = {
     "divToPElementsRe": re.compile(
         r"<(a|blockquote|dl|div|img|ol|p|pre|table|ul)", re.I
     ),
-    #'replaceBrsRe': re.compile(r'(<br[^>]*>[ \n\r\t]*){2,}',re.I),
-    #'replaceFontsRe': re.compile(r'<(\/?)font[^>]*>',re.I),
-    #'trimRe': re.compile(r'^\s+|\s+$/'),
-    #'normalizeRe': re.compile(r'\s{2,}/'),
-    #'killBreaksRe': re.compile(r'(<br\s*\/?>(\s|&nbsp;?)*){1,}/'),
+    # 'replaceBrsRe': re.compile(r'(<br[^>]*>[ \n\r\t]*){2,}',re.I),
+    # 'replaceFontsRe': re.compile(r'<(\/?)font[^>]*>',re.I),
+    # 'trimRe': re.compile(r'^\s+|\s+$/'),
+    # 'normalizeRe': re.compile(r'\s{2,}/'),
+    # 'killBreaksRe': re.compile(r'(<br\s*\/?>(\s|&nbsp;?)*){1,}/'),
     "videoRe": re.compile(r"https?:\/\/(www\.)?(youtube|vimeo)\.com", re.I),
     # skipFootnoteLink:      /^\s*(\[?[a-z0-9]{1,2}\]?|^|edit|citation needed)\s*$/i,
 }
@@ -94,15 +94,15 @@ class Document:
     """Class to build a etree document out of html."""
 
     def __init__(
-        self,
-        input,
-        positive_keywords=None,
-        negative_keywords=None,
-        url=None,
-        min_text_length=25,
-        retry_length=250,
-        xpath=False,
-        handle_failures="discard",
+            self,
+            input,
+            positive_keywords=None,
+            negative_keywords=None,
+            url=None,
+            min_text_length=25,
+            retry_length=250,
+            xpath=False,
+            handle_failures="discard",
     ):
         """Generate the document
 
@@ -288,8 +288,8 @@ class Document:
                 append = True
             sibling_key = sibling  # HashableElement(sibling)
             if (
-                sibling_key in candidates
-                and candidates[sibling_key]["content_score"] >= sibling_score_threshold
+                    sibling_key in candidates
+                    and candidates[sibling_key]["content_score"] >= sibling_score_threshold
             ):
                 append = True
 
@@ -301,9 +301,9 @@ class Document:
                 if node_length > 80 and link_density < 0.25:
                     append = True
                 elif (
-                    node_length <= 80
-                    and link_density == 0
-                    and re.search(r"\.( |$)", node_content)
+                        node_length <= 80
+                        and link_density == 0
+                        and re.search(r"\.( |$)", node_content)
                 ):
                     append = True
 
@@ -346,7 +346,8 @@ class Document:
         candidates = {}
         ordered = []
         for elem in self.tags(self._html(), "p", "pre", "td"):
-            parent_node = elem.getparent()
+            parent_node = self.get_scored_parent(elem)
+
             if parent_node is None:
                 continue
             grand_parent_node = parent_node.getparent()
@@ -370,10 +371,11 @@ class Document:
             content_score = 1
             content_score += len(inner_text.split(","))
             content_score += min((inner_text_len / 100), 3)
+
             # if elem not in candidates:
             #    candidates[elem] = self.score_node(elem)
-
             # WTF? candidates[elem]['content_score'] += content_score
+
             candidates[parent_node]["content_score"] += content_score
             if grand_parent_node is not None:
                 candidates[grand_parent_node]["content_score"] += content_score / 2.0
@@ -392,6 +394,17 @@ class Document:
             candidate["content_score"] *= 1 - ld
 
         return candidates
+
+    # def get_scored_parent(self, elem: HtmlElement) -> Union[HtmlElement, None]:
+    def get_scored_parent(self, elem):
+        assert elem is not None
+        while True:
+            elem = elem.getparent()
+            # if elem:
+            #     print("Try:", elem.tag, len(elem.getchildren()))
+            if elem is None or elem.tag in ['html', 'body'] or len(elem.getchildren()) != 1:
+                return elem
+            # print("Continue:", elem.tag, len(elem.getchildren()))
 
     def class_weight(self, e):
         weight = 0
@@ -447,9 +460,9 @@ class Document:
             if len(s) < 2:
                 continue
             if (
-                REGEXES["unlikelyCandidatesRe"].search(s)
-                and (not REGEXES["okMaybeItsACandidateRe"].search(s))
-                and elem.tag not in ["html", "body"]
+                    REGEXES["unlikelyCandidatesRe"].search(s)
+                    and (not REGEXES["okMaybeItsACandidateRe"].search(s))
+                    and elem.tag not in ["html", "body"]
             ):
                 log.debug("Removing unlikely candidate - %s" % describe(elem))
                 elem.drop_tree()
@@ -463,14 +476,14 @@ class Document:
             # This results in incorrect results in case there is an <img>
             # buried within an <a> for example
             if not REGEXES["divToPElementsRe"].search(
-                str_(b"".join(map(tostring_, list(elem))))
+                    str_(b"".join(map(tostring_, list(elem))))
             ):
                 # log.debug("Altering %s to p" % (describe(elem)))
                 elem.tag = "p"
                 # print "Fixed element "+describe(elem)
 
         for elem in self.tags(self.html, "div"):
-            if elem.text and elem.text.strip():
+            if elem.text is not None and elem.text.strip():
                 p = fragment_fromstring("<p/>")
                 p.text = elem.text
                 elem.text = None
@@ -478,7 +491,7 @@ class Document:
                 # print "Appended "+tounicode(p)+" to "+describe(elem)
 
             for pos, child in reversed(list(enumerate(elem))):
-                if child.tail and child.tail.strip():
+                if child.tail is not None and child.tail.strip():
                     p = fragment_fromstring("<p/>")
                     p.text = child.tail
                     child.tail = None
@@ -516,7 +529,7 @@ class Document:
         allowed = {}
         # Conditionally clean <table>s, <ul>s, and <div>s
         for el in self.reverse_tags(
-            node, "table", "ul", "div", "aside", "header", "footer", "section"
+                node, "table", "ul", "div", "aside", "header", "footer", "section"
         ):
             if el in allowed:
                 continue
@@ -572,14 +585,14 @@ class Document:
                     to_remove = True
                 elif content_length < MIN_LEN and counts["img"] == 0:
                     reason = (
-                        "too short content length %s without a single image"
-                        % content_length
+                            "too short content length %s without a single image"
+                            % content_length
                     )
                     to_remove = True
                 elif content_length < MIN_LEN and counts["img"] > 2:
                     reason = (
-                        "too short content length %s and too many images"
-                        % content_length
+                            "too short content length %s and too many images"
+                            % content_length
                     )
                     to_remove = True
                 elif weight < 25 and link_density > 0.2:
@@ -741,7 +754,7 @@ def main():
             open_in_browser(result)
         else:
             enc = (
-                sys.__stdout__.encoding or "utf-8"
+                    sys.__stdout__.encoding or "utf-8"
             )  # XXX: this hack could not always work, better to set PYTHONIOENCODING
             result = "Title:" + doc.short_title() + "\n" + doc.summary()
             if sys.version_info[0] == 3:
