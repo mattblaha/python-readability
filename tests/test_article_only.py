@@ -1,8 +1,33 @@
 import os
+import time
 import unittest
 
 from readability import Document
-import timeout_decorator
+from functools import wraps
+
+
+class TimeoutException(Exception):
+    """Exception raised when a function exceeds its time limit."""
+    pass
+
+
+def timeout(seconds):
+    """Decorator to enforce a timeout on function execution."""
+    def decorator(func):
+        @wraps(func)
+        def wrapper(*args, **kwargs):
+            start_time = time.perf_counter()
+            result = func(*args, **kwargs)
+            end_time = time.perf_counter()
+            elapsed_time = end_time - start_time
+            if elapsed_time > seconds:
+                raise TimeoutException(
+                    f"Function '{func.__name__}' exceeded time limit of {seconds} seconds "
+                    f"with an execution time of {elapsed_time:.4f} seconds"
+                )
+            return result
+        return wrapper
+    return decorator
 
 
 SAMPLES = os.path.join(os.path.dirname(__file__), "samples")
@@ -101,7 +126,7 @@ class TestArticleOnly(unittest.TestCase):
         assert not "aside" in s
 
     # Many spaces make some regexes run forever
-    @timeout_decorator.timeout(seconds=3, use_signals=False)
+    @timeout(3)
     def test_many_repeated_spaces(self):
         long_space = " " * 1000000
         sample = "<html><body><p>foo" + long_space + "</p></body></html>"
@@ -134,3 +159,24 @@ class TestArticleOnly(unittest.TestCase):
         sample = load_sample("si-game.sample.html")
         doc = Document(sample)
         assert '[no-author]' == doc.author()
+
+    def test_keep_images_present(self):
+        sample = load_sample("summary-keep-all-images.sample.html")
+
+        doc = Document(sample)
+
+        assert "<img" in doc.summary(keep_all_images=True)
+
+    def test_keep_images_absent(self):
+        sample = load_sample("summary-keep-all-images.sample.html")
+
+        doc = Document(sample)
+
+        assert "<img" not in doc.summary(keep_all_images=False)
+
+    def test_keep_images_absent_by_defautl(self):
+        sample = load_sample("summary-keep-all-images.sample.html")
+
+        doc = Document(sample)
+
+        assert "<img" not in doc.summary()

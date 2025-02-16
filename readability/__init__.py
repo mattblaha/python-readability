@@ -1,3 +1,3 @@
-__version__ = "0.8.1.1"
+__version__ = "0.8.3"
 
 from .readability import Document

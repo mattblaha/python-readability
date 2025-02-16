@@ -6,10 +6,10 @@
 python-readability
 ==================
 
-Given a html document, it pulls out the main body text and cleans it up.
+Given an HTML document, extract and clean up the main body text and title.
 
-This is a python port of a ruby port of `arc90's readability
-project <http://lab.arc90.com/experiments/readability/>`__.
+This is a Python port of a Ruby port of `arc90's Readability
+project <https://web.archive.org/web/20130519040221/http://www.readability.com/>`__.
 
 Installation
 ------------
@@ -35,7 +35,7 @@ Usage
     >>> from readability import Document
 
     >>> response = requests.get('http://example.com')
-    >>> doc = Document(response.text)
+    >>> doc = Document(response.content)
     >>> doc.title()
     'Example Domain'
 
@@ -49,6 +49,7 @@ Usage
 Change Log
 ----------
 
+-  0.8.2 Added article author(s) (thanks @mattblaha)
 -  0.8.1 Fixed processing of non-ascii HTMLs via regexps.
 -  0.8 Replaced XHTML output with HTML5 output in summary() call.
 -  0.7.1 Support for Python 3.7 . Fixed a slowdown when processing documents with lots of spaces.
@@ -70,6 +71,6 @@ Thanks to
 -  Latest `readability.js <https://github.com/MHordecki/readability-redux/blob/master/readability/readability.js>`__
 -  Ruby port by starrhorne and iterationlabs
 -  `Python port <https://github.com/gfxmonk/python-readability>`__ by gfxmonk
--  `Decruft effort <http://www.minvolai.com/blog/decruft-arc90s-readability-in-python/>` to move to lxml
+-  `Decruft effort <https://web.archive.org/web/20110214150709/https://www.minvolai.com/blog/decruft-arc90s-readability-in-python/>` to move to lxml
 -  "BR to P" fix from readability.js which improves quality for smaller texts
 -  Github users contributions.
